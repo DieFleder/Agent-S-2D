@@ -10,6 +10,8 @@
 #include "GameFramework/Controller.h"
 #include "Camera/CameraComponent.h"
 
+#include "DrawDebugHelpers.h"
+
 DEFINE_LOG_CATEGORY_STATIC(SideScrollerCharacter, Log, All);
 
 //////////////////////////////////////////////////////////////////////////
@@ -35,7 +37,6 @@ AAgentSCharacter::AAgentSCharacter()
 	CameraBoom->bDoCollisionTest = false;
 	CameraBoom->RelativeRotation = FRotator(0.0f, -90.0f, 0.0f);
 	
-
 	// Create an orthographic camera (no perspective) and attach it to the boom
 	SideViewCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("SideViewCamera"));
 	SideViewCameraComponent->ProjectionMode = ECameraProjectionMode::Orthographic;
@@ -75,6 +76,52 @@ AAgentSCharacter::AAgentSCharacter()
 	GetSprite()->SetIsReplicated(true);
 	bReplicates = true;
 }
+//////////////////////////////////////////////////////////////////////////
+// Input
+
+void AAgentSCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
+{
+	// Note: the 'Jump' action and the 'MoveRight' axis are bound to actual keys/buttons/sticks in DefaultInput.ini (editable from Project Settings..Input)
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &AAgentSCharacter::AgentStartJump);
+	PlayerInputComponent->BindAction("Jump", IE_Released, this, &AAgentSCharacter::AgentStopJump);
+	PlayerInputComponent->BindAxis("MoveRight", this, &AAgentSCharacter::MoveRight);
+
+	//PlayerInputComponent->BindTouch(IE_Pressed, this, &AAgentSCharacter::TouchStarted);
+	//PlayerInputComponent->BindTouch(IE_Released, this, &AAgentSCharacter::TouchStopped);
+}
+//void AAgentSCharacter::TouchStarted(const ETouchIndex::Type FingerIndex, const FVector Location)
+//{
+//	// Jump on any touch
+//	Jump();
+//}
+//
+//void AAgentSCharacter::TouchStopped(const ETouchIndex::Type FingerIndex, const FVector Location)
+//{
+//	// Cease jumping once touch stopped
+//	StopJumping();
+//}
+
+
+void AAgentSCharacter::AgentStartJump()
+{
+	if (!bIsHanging)
+	{
+		Jump();
+	}
+}
+
+void AAgentSCharacter::AgentStopJump()
+{
+	StopJumping();
+}
+
+void AAgentSCharacter::MoveRight(float Value)
+{
+	/*UpdateChar();*/
+
+	// Apply the input to the character motion
+	AddMovementInput(FVector(1.0f, 0.0f, 0.0f), Value);
+}
 
 //////////////////////////////////////////////////////////////////////////
 // Animation
@@ -86,7 +133,7 @@ void AAgentSCharacter::UpdateAnimation()
 
 	// Are we moving or standing still?
 	UPaperFlipbook* DesiredAnimation = (PlayerSpeedSqr > 0.0f) ? RunningAnimation : IdleAnimation;
-	if( GetSprite()->GetFlipbook() != DesiredAnimation 	)
+	if (GetSprite()->GetFlipbook() != DesiredAnimation)
 	{
 		GetSprite()->SetFlipbook(DesiredAnimation);
 	}
@@ -97,42 +144,34 @@ void AAgentSCharacter::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	
 	UpdateCharacter();	
-	
+
+	if (!GetCharacterMovement()->IsMovingOnGround() && bSearchForLedge)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("In Air"))
+		WallTrace();
+		// TODO Impliment LedgeTrace. Will need some out parameters for the ledge and wall locations and normal vectors
+	}
+	else if (GetCharacterMovement()->IsMovingOnGround() && !bSearchForLedge)
+	{
+		bSearchForLedge = true;
+	}
 }
 
-
-//////////////////////////////////////////////////////////////////////////
-// Input
-
-void AAgentSCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
+void AAgentSCharacter::WallTrace()
 {
-	// Note: the 'Jump' action and the 'MoveRight' axis are bound to actual keys/buttons/sticks in DefaultInput.ini (editable from Project Settings..Input)
-	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
-	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
-	PlayerInputComponent->BindAxis("MoveRight", this, &AAgentSCharacter::MoveRight);
-
-	PlayerInputComponent->BindTouch(IE_Pressed, this, &AAgentSCharacter::TouchStarted);
-	PlayerInputComponent->BindTouch(IE_Released, this, &AAgentSCharacter::TouchStopped);
-}
-
-void AAgentSCharacter::MoveRight(float Value)
-{
-	/*UpdateChar();*/
-
-	// Apply the input to the character motion
-	AddMovementInput(FVector(1.0f, 0.0f, 0.0f), Value);
-}
-
-void AAgentSCharacter::TouchStarted(const ETouchIndex::Type FingerIndex, const FVector Location)
-{
-	// Jump on any touch
-	Jump();
-}
-
-void AAgentSCharacter::TouchStopped(const ETouchIndex::Type FingerIndex, const FVector Location)
-{
-	// Cease jumping once touch stopped
-	StopJumping();
+	FHitResult HitResult;
+	FVector Start = GetActorLocation();
+	FVector End = GetActorForwardVector() * 100 + Start;
+	FQuat Rot;
+	FCollisionShape Sphere = FCollisionShape::MakeSphere(25);
+	bool bHit = GetWorld()->SweepSingleByChannel(HitResult, Start, End, Rot, ECollisionChannel::ECC_GameTraceChannel1, Sphere);
+	DrawDebugSphere(GetWorld(), Start, 25, 8, FColor::Red);
+	DrawDebugSphere(GetWorld(), End, 25, 8, FColor::Green);
+	if (bHit)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Hit"))
+		bSearchForLedge = false;
+	}
 }
 
 void AAgentSCharacter::UpdateCharacter()
