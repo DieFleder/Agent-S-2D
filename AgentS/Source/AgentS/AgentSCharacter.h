@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "PaperCharacter.h"
+#include "Pistol.h"
 #include "AgentSCharacter.generated.h"
 
 class UTextRenderComponent;
@@ -30,7 +31,9 @@ class AAgentSCharacter : public APaperCharacter
 	class USpringArmComponent* CameraBoom;
 
 	UTextRenderComponent* TextComponent;
+
 	virtual void Tick(float DeltaSeconds) override;
+	virtual void BeginPlay() override;
 
 protected:
 	// The animation to play while running around
@@ -67,12 +70,18 @@ public:
 	/** Returns CameraBoom subobject **/
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Gameplay)
+	TSubclassOf<APistol> PistolBlueprint;
+
 private:
 	bool bIsHanging = false;
 	bool bSearchForLedge = true;
+	APistol* Pistol;
 
 	void AgentStartJump();
 	void AgentStopJump();
 
 	void WallTrace();
+
+	void UseWeapon();
 };

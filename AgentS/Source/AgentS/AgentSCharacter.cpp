@@ -84,7 +84,9 @@ void AAgentSCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerIn
 	// Note: the 'Jump' action and the 'MoveRight' axis are bound to actual keys/buttons/sticks in DefaultInput.ini (editable from Project Settings..Input)
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &AAgentSCharacter::AgentStartJump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &AAgentSCharacter::AgentStopJump);
+	PlayerInputComponent->BindAction("UseWeapon", IE_Pressed, this, &AAgentSCharacter::UseWeapon);
 	PlayerInputComponent->BindAxis("MoveRight", this, &AAgentSCharacter::MoveRight);
+
 
 	//PlayerInputComponent->BindTouch(IE_Pressed, this, &AAgentSCharacter::TouchStarted);
 	//PlayerInputComponent->BindTouch(IE_Released, this, &AAgentSCharacter::TouchStopped);
@@ -115,6 +117,11 @@ void AAgentSCharacter::AgentStopJump()
 	StopJumping();
 }
 
+void AAgentSCharacter::UseWeapon()
+{
+
+}
+
 void AAgentSCharacter::MoveRight(float Value)
 {
 	/*UpdateChar();*/
@@ -136,6 +143,18 @@ void AAgentSCharacter::UpdateAnimation()
 	if (GetSprite()->GetFlipbook() != DesiredAnimation)
 	{
 		GetSprite()->SetFlipbook(DesiredAnimation);
+	}
+}
+
+void AAgentSCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	if (PistolBlueprint != nullptr)
+	{
+		Pistol = GetWorld()->SpawnActor<APistol>(PistolBlueprint);
+		Pistol->AttachToComponent(GetSprite(), FAttachmentTransformRules::KeepRelativeTransform, TEXT("WeaponSocket"));
+		Pistol->AddActorLocalRotation(FRotator(0.f, 180.f, 0.f));
 	}
 }
 
@@ -165,11 +184,11 @@ void AAgentSCharacter::WallTrace()
 	FQuat Rot;
 	FCollisionShape Sphere = FCollisionShape::MakeSphere(25);
 	bool bHit = GetWorld()->SweepSingleByChannel(HitResult, Start, End, Rot, ECollisionChannel::ECC_GameTraceChannel1, Sphere);
-	DrawDebugSphere(GetWorld(), Start, 25, 8, FColor::Red);
-	DrawDebugSphere(GetWorld(), End, 25, 8, FColor::Green);
+	//DrawDebugSphere(GetWorld(), Start, 25, 8, FColor::Red);
+	//DrawDebugSphere(GetWorld(), End, 25, 8, FColor::Green);
 	if (bHit)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Hit"))
+		//UE_LOG(LogTemp, Warning, TEXT("Hit"))
 		bSearchForLedge = false;
 	}
 }
